@@ -1,21 +1,18 @@
-type item = {
-  title: string,
-  completed: bool,
-};
-
 type action =
-  | AddItem;
+  | AddItem
+  | ToggleItem(int);
 
-type state = {items: list(item)};
+type state = {items: list(ItemData.item)};
 
-type counterRecord = {mutable value: int};
-let counterRecord = {value: 0};
+type counter = {mutable value: int};
+let counter = {value: 0};
 
-let createNewItem = () => {
+let createNewItem = (): ItemData.item => {
   /* record.value = record.value + 1; */
-  counterRecord.value = counterRecord.value + 1;
+  counter.value = counter.value + 1;
   {
-    title: "new item" ++ string_of_int(counterRecord.value),
+    id: counter.value,
+    title: "new item " ++ string_of_int(counter.value),
     completed: false,
   };
 };
@@ -28,6 +25,14 @@ let make = _children => {
   reducer: (action, {items}) =>
     switch (action) {
     | AddItem => ReasonReact.Update({items: [createNewItem(), ...items]})
+    | ToggleItem(id) =>
+      ReasonReact.Update({
+        items:
+          items
+          |> List.map((item: ItemData.item) =>
+               item.id === id ? {...item, completed: !item.completed} : item
+             ),
+      })
     },
   render: self => {
     let {items} = self.state;
@@ -41,12 +46,19 @@ let make = _children => {
       </div>
       <div className="items">
         {
-          switch (itemsAmount) {
-          | 0 => ReasonReact.stringToElement("Nothing")
-          | _ =>
-            ReasonReact.arrayToElement(
-              Array.of_list(List.map(_item => <TodoItem />, items)),
-            )
+          if (itemsAmount === 0) {
+            ReasonReact.stringToElement("Nothing");
+          } else {
+            items
+            |> List.map((item: ItemData.item) =>
+                 <TodoItem
+                   key={string_of_int(item.id)}
+                   onToggle={() => self.send(ToggleItem(item.id))}
+                   item
+                 />
+               )
+            |> Array.of_list
+            |> ReasonReact.arrayToElement;
           }
         }
       </div>
